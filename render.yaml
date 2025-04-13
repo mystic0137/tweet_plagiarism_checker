@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: whostolemytweet
+    runtime: python
+    buildCommand: |
+      pip install -r requirements.txt
+      chmod +x build.sh
+      ./build.sh
+    
+    startCommand: gunicorn wsgi:app --timeout 180
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false  # Add this via Render's Dashboard securely
+    region: oregon
+    plan: free

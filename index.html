@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tweet Plagiarism Detector</title>
+    <style>
+        :root {
+            /* Light theme colors */
+            --light-bg: #f8f9fa;
+            --light-text: #343a40;
+            --light-primary: #1da1f2;
+            --light-secondary: #e9ecef;
+            --light-accent: #2c3e50;
+            --light-card: #ffffff;
+            --light-border: #dee2e6;
+            
+            /* Dark theme colors */
+            --dark-bg: #15202b;
+            --dark-text: #f8f9fa;
+            --dark-primary: #1da1f2;
+            --dark-secondary: #1e2732;
+            --dark-accent: #8899a6;
+            --dark-card: #192734;
+            --dark-border: #38444d;
+        }
+
+        .light-theme {
+            --bg-color: var(--light-bg);
+            --text-color: var(--light-text);
+            --primary-color: var(--light-primary);
+            --secondary-color: var(--light-secondary);
+            --accent-color: var(--light-accent);
+            --card-color: var(--light-card);
+            --border-color: var(--light-border);
+        }
+
+        .dark-theme {
+            --bg-color: var(--dark-bg);
+            --text-color: var(--dark-text);
+            --primary-color: var(--dark-primary);
+            --secondary-color: var(--dark-secondary);
+            --accent-color: var(--dark-accent);
+            --card-color: var(--dark-card);
+            --border-color: var(--dark-border);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-size: 18px; /* Increased base font size */
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        header h1 {
+            font-size: 3rem; /* Increased from 2.5rem */
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+        }
+
+        header p {
+            font-size: 1.4rem; /* Increased from 1.2rem */
+            color: var(--accent-color);
+        }
+
+        .theme-switch-wrapper {
+            display: flex;
+            align-items: center;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        .theme-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--accent-color);
+            transition: 0.4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary-color);
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px var(--primary-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .input-section {
+            background-color: var(--card-color);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .url-input {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .url-input label {
+            font-weight: 600;
+            font-size: 1.2rem; /* Increased from 1rem */
+            color: var(--accent-color);
+        }
+
+        .url-input input {
+            padding: 0.8rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1.2rem; /* Increased from 1rem */
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: border-color 0.3s;
+        }
+
+        .url-input input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(29, 161, 242, 0.2);
+        }
+
+        #analyze-btn {
+            padding: 1rem 2rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.2rem; /* Increased from 1rem */
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            margin-top: 1rem;
+            align-self: center;
+        }
+
+        #analyze-btn:hover {
+            background-color: #0d8ecf;
+            transform: translateY(-2px);
+        }
+
+        #analyze-btn:active {
+            transform: translateY(0);
+        }
+
+        .results-section {
+            background-color: var(--card-color);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loader {
+            display: none;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(29, 161, 242, 0.2);
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-content {
+            width: 100%;
+            display: none;
+        }
+
+        .tweets-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .tweet {
+            padding: 1.5rem;
+            border-radius: 12px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .tweet-header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .tweet-header img {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .tweet-user {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tweet-user .name {
+            font-weight: 700;
+            font-size: 1.3rem; /* Added font size */
+        }
+
+        .tweet-user .username {
+            color: var(--accent-color);
+            font-size: 1.1rem; /* Increased from 0.9rem */
+        }
+
+        .tweet-content {
+            margin-bottom: 0.75rem;
+            word-break: break-word;
+            font-size: 1.3rem; /* Increased from 1.1rem */
+            line-height: 1.5;
+        }
+
+        .tweet-date {
+            font-size: 1.1rem; /* Increased from 0.9rem */
+            color: var(--accent-color);
+        }
+
+        .similarity-result {
+            background-color: var(--card-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .similarity-result h3 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+            font-size: 1.8rem;
+        }
+
+        .similarity-meter {
+            height: 36px;
+            background-color: var(--secondary-color);
+            border-radius: 18px;
+            margin: 1.5rem 0;
+            overflow: hidden;
+        }
+
+        .similarity-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #1da1f2, #f45d22);
+            text-align: center;
+            line-height: 36px;
+            color: white;
+            font-weight: 700;
+            transition: width 1s ease-out;
+            font-size: 1.2rem;
+        }
+
+        .analysis-raw {
+            white-space: pre-line;
+            background-color: var(--secondary-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1.5rem;
+            font-family: monospace;
+            overflow-x: auto;
+            font-size: 1.2rem; /* Added explicit font size */
+        }
+
+        .verdict {
+            text-align: center;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1.5rem;
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+
+        .verdict.plagiarized {
+            background-color: rgba(224, 36, 94, 0.2);
+            color: #e0245e;
+        }
+
+        .verdict.original {
+            background-color: rgba(23, 191, 99, 0.2);
+            color: #17bf63;
+        }
+
+        /* Additional styles for improved AI analysis display */
+        .analysis-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .analysis-section {
+            background-color: var(--secondary-color);
+            border-radius: 10px;
+            padding: 1.2rem;
+        }
+
+        .analysis-section h3 {
+            color: var(--primary-color);
+            margin-bottom: 0.8rem;
+            font-size: 1.6rem;
+        }
+
+        .analysis-section p {
+            line-height: 1.5;
+            font-size: 1.2rem; /* Added explicit font size */
+        }
+
+        .analysis-verdict, .analysis-score, .analysis-conclusion {
+            background-color: var(--secondary-color);
+            border-radius: 10px;
+            padding: 1.2rem;
+        }
+
+        .analysis-verdict h3, .analysis-score h3, .analysis-conclusion h3 {
+            color: var(--primary-color);
+            margin-bottom: 0.8rem;
+            font-size: 1.6rem;
+        }
+
+        .analysis-verdict p, .analysis-score p, .analysis-conclusion p {
+            font-size: 1.2rem; /* Added explicit font size */
+        }
+
+        .score-bar {
+            height: 24px;
+            background-color: rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+
+        .score-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2ecc71, #e74c3c);
+            border-radius: 12px;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            padding: 1rem;
+            background-color: rgba(231, 76, 60, 0.1);
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.2rem; /* Added explicit font size */
+        }
+
+        .analysis-fallback {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Style for formatted analysis content */
+        .detail-item {
+            margin-bottom: 0.8rem;
+            font-size: 1.2rem; /* Added explicit font size */
+        }
+
+        .detail-item strong {
+            font-size: 1.2rem; /* Added explicit font size */
+            color: var(--accent-color);
+        }
+
+        /* Add style for h4 elements created in formatAnalysis function */
+        h4 {
+            color: var(--primary-color);
+            margin: 1.2rem 0 0.8rem;
+            font-size: 1.4rem; /* Added explicit font size */
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 1rem;
+            color: var(--accent-color);
+        }
+
+        footer p {
+            font-size: 1.1rem; /* Increased font size */
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .tweets-comparison {
+                grid-template-columns: 1fr;
+            }
+            
+            .result-details {
+                grid-template-columns: 1fr;
+            }
+            
+            .theme-switch-wrapper {
+                position: relative;
+                top: 0;
+                right: 0;
+                margin-bottom: 1rem;
+                justify-content: flex-end;
+            }
+        }
+    </style>
+</head>
+<body class="light-theme">
+    <div class="container">
+        <div class="theme-switch-wrapper">
+            <label class="theme-switch" for="checkbox">
+                <input type="checkbox" id="checkbox" />
+                <div class="slider"></div>
+            </label>
+        </div>
+        
+        <header>
+            <h1>Tweet Plagiarism Detector</h1>
+            <p>Check if one tweet has been copied from another</p>
+        </header>
+        
+        <main>
+            <section class="input-section">
+                <div class="url-input">
+                    <label for="original-tweet">First Tweet URL</label>
+                    <input type="url" id="original-tweet" placeholder="https://twitter.com/username/status/123456789">
+                </div>
+                
+                <div class="url-input">
+                    <label for="comparison-tweet">Second Tweet URL</label>
+                    <input type="url" id="comparison-tweet" placeholder="https://twitter.com/username/status/987654321">
+                </div>
+                
+                <button id="analyze-btn">Analyze Tweets</button>
+            </section>
+            
+            <section class="results-section">
+                <div class="loader" id="loader">
+                    <div class="spinner"></div>
+                </div>
+                
+                <div class="result-content" id="result-content">
+                    <!-- Results will be populated here with JavaScript -->
+                </div>
+            </section>
+        </main>
+        
+        <footer>
+            <p>© 2025 Tweet Plagiarism Detector | Ethical use encouraged</p>
+        </footer>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Theme Toggle
+            const toggleSwitch = document.querySelector('#checkbox');
+            const currentTheme = localStorage.getItem('theme');
+            
+            if (currentTheme) {
+                document.body.className = currentTheme;
+                if (currentTheme === 'dark-theme') {
+                    toggleSwitch.checked = true;
+                }
+            }
+            
+            function switchTheme(e) {
+                if (e.target.checked) {
+                    document.body.className = 'dark-theme';
+                    localStorage.setItem('theme', 'dark-theme');
+                } else {
+                    document.body.className = 'light-theme';
+                    localStorage.setItem('theme', 'light-theme');
+                }
+            }
+            
+            toggleSwitch.addEventListener('change', switchTheme, false);
+            
+            // Plagiarism Checker Functionality
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const originalTweetInput = document.getElementById('original-tweet');
+            const comparisonTweetInput = document.getElementById('comparison-tweet');
+            const loader = document.getElementById('loader');
+            const resultContent = document.getElementById('result-content');
+            
+            analyzeBtn.addEventListener('click', async function() {
+                const originalUrl = originalTweetInput.value.trim();
+                const comparisonUrl = comparisonTweetInput.value.trim();
+                
+                if (!originalUrl || !comparisonUrl) {
+                    alert('Please enter both tweet URLs');
+                    return;
+                }
+                
+                // Show loader and hide results
+                loader.style.display = 'block';
+                resultContent.style.display = 'none';
+                
+                try {
+                    await analyzeTweets(originalUrl, comparisonUrl);
+                } catch (error) {
+                    alert('Error analyzing tweets: ' + error);
+                    loader.style.display = 'none';
+                }
+            });
+            
+            async function analyzeTweets(originalUrl, comparisonUrl) {
+                try {
+                    const response = await fetch('/analyze', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            tweet1: originalUrl,
+                            tweet2: comparisonUrl
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    // Hide loader
+                    loader.style.display = 'none';
+                    
+                    if (data.success) {
+                        // Extract an estimated score from the analysis text
+                        const scoreMatch = data.analysis.match(/Score:\s*([0-9.]+)/i);
+                        let similarityScore = 0;
+                        if (scoreMatch && scoreMatch[1]) {
+                            
+                            similarityScore = parseFloat(scoreMatch[1]) * 100; // Convert to percentage
+                        }
+                        
+                        // Determine verdict label and class based on score
+                        let verdictLabel = '';
+                        let verdictClass = '';
+                        if (similarityScore < 30) {
+                            verdictLabel = 'No Plagiarism';
+                            verdictClass = 'original';
+                        } else if (similarityScore < 70) {
+                            verdictLabel = 'Likely Plagiarized';
+                            verdictClass = 'likely';
+                        } else {
+                            verdictLabel = 'High Plagiarism';
+                            verdictClass = 'plagiarized';
+                        }
+                        
+                        // Generate placeholder avatar URLs based on usernames
+                        const getAvatarUrl = (username) => {
+                            return `https://avatars.dicebear.com/api/initials/${username}.svg`;
+                        };
+                        
+                        // Generate result HTML
+                        const resultHTML = `
+                            <div class="tweets-comparison">
+                                <div class="tweet">
+                                    <div class="tweet-header">
+                                        <img src="${getAvatarUrl(data.tweet1.username)}" alt="Profile image">
+                                        <div class="tweet-user">
+                                            <span class="name">@${data.tweet1.username}</span>
+                                            <span class="username">${data.tweet1.username}</span>
+                                        </div>
+                                    </div>
+                                    <div class="tweet-content">${data.tweet1.content}</div>
+                                    <div class="tweet-date">${data.tweet1.date}</div>
+                                </div>
+                                
+                                <div class="tweet">
+                                    <div class="tweet-header">
+                                        <img src="${getAvatarUrl(data.tweet2.username)}" alt="Profile image">
+                                        <div class="tweet-user">
+                                            <span class="name">@${data.tweet2.username}</span>
+                                            <span class="username">${data.tweet2.username}</span>
+                                        </div>
+                                    </div>
+                                    <div class="tweet-content">${data.tweet2.content}</div>
+                                    <div class="tweet-date">${data.tweet2.date}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="similarity-result">
+                                <h3>Similarity Analysis</h3>
+                                <div class="similarity-meter">
+                                    <div class="similarity-fill" style="width:${similarityScore}%">${similarityScore.toFixed(0)}% Similar</div>
+                                </div>
+                                
+                                <div class="analysis-raw">${formatAnalysis(data.analysis)}</div>
+                                
+                                <div class="verdict ${verdictClass}">
+                                    ${verdictLabel}
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Show results
+                        resultContent.style.display = 'block';
+                        resultContent.innerHTML = resultHTML;
+                    } else {
+                        alert('Error analyzing tweets: ' + data.error);
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error communicating with server: ' + error);
+                }
+            }
+            
+            // Function to format the analysis text in a more readable way
+            function formatAnalysis(analysisText) {
+                // Replace section headers with styled headers
+                let formatted = analysisText.replace(/### (.*?):/g, '<h4>$1:</h4>');
+                
+                // Replace bullet points with styled list items
+                formatted = formatted.replace(/- (.*?):(.*)/g, '<div class="detail-item"><strong>$1:</strong>$2</div>');
+                
+                // Add extra line breaks for readability
+                formatted = formatted.replace(/\n\n/g, '<br><br>');
+                
+                return formatted;
+            }
+        });
+    </script>
+</body>
+</html>
